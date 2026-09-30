@@ -1,41 +1,34 @@
+# Node Policy API
 
-1) Agent - Agent Name
+JavaScript/Node.js implementation for the policy assessment. MongoDB stores Agent, User, Account, PolicyCategory (LOB), PolicyCarrier, Policy, ScheduledMessage, and Message documents in separate collections.
 
-2) User - first name, DOB, address, phone number, state, zip code, email, gender, userType
+## Setup
 
-3) User's Account - Account Name
+1. Install Node.js 18+ and MongoDB.
+2. Copy `.env.example` to `.env` and set `MONGODB_URI` and (optionally) `PORT`.
+3. Run `npm install` and `npm start`. The supervisor launches the API and monitors its CPU use.
 
-4) Policy Category(LOB) - category_name
+## Task 1: policy data
 
-5) Policy Carrier - company_name
+Upload the provided CSV as multipart form data in the `file` field. Parsing and MongoDB persistence run in a worker thread.
 
-6) Policy Info -  policy number, policy start date, policy end date, policy category- collection id, company collection id, and user id.
 
- 
 
-You have to perform the following tasks based above information:
+The worker maps the CSV's `agent`, `firstname`, `dob`, `address`, `phone`, `state`, `zip`, `email`, `gender`, `userType`, `account_name`, `category_name`, `company_name`, `policy_number`, `policy_start_date`, and `policy_end_date` columns to their respective collections. Repeated policy numbers are updated, making an import safe to retry.
 
- 
+- `GET /api/policies/search?username=Lura%20Lucca` returns policy records for a user's first name (`firstname` in the CSV), with related records populated. The `username` parameter is an exact, case-insensitive match.
+- `GET /api/policies/aggregate` returns each user with policy count and their policy records.
 
-Task 1:
+## Task 2: scheduled messages and CPU restart
 
-1) Create an API  to upload the attached XLSX/CSV data into MongoDB. (Please accomplish this using worker threads)
+Submit a future local server time in ISO calendar date and 24-hour time format. The job is stored durably and a message is inserted into the `messages` collection once due; pending jobs are resumed after a process restart.
 
-2) Search API to find policy info with the help of the username.
+```sh
+curl -X POST http://localhost:3000/api/messages \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Follow up","day":"2027-01-15","time":"09:30"}'
+```
 
-3) API to provide aggregated policy by each user.
+`src/supervisor.js` samples the API child process CPU every second. At 70% of the machine's total CPU capacity, it terminates and relaunches the API child. The supervisor also restarts the child after an unexpected exit.
 
-4) Consider each info as a different collection in MongoDB (Agent, User, User's Account, LOB, Carrier, Policy).
-
- 
-
-Task 2:
-
-1) Track real-time CPU utilization of the node server and on 70% usage restart the server.
-
-2) Create a post-service that takes the message, day, and time in body parameters and it inserts that message into DB at that particular day and time.
-
-In case if you face some queries, you can revert to the mail mentioning the doubts so that our team will provide you with better clarity against your doubts.
-
-Ensure both tasks are completed in JavaScript.
-
+Import node-policy.postman_collection.json  in postman to test the API endpoints.
